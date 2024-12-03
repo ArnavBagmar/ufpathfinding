@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UF Map Pathfinding</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+    }
+    button {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>UF Map Pathfinding</h1>
+  <input type="file" id="csvInput" accept=".csv">
+  <br>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <br>
+  <select id="algorithmSelect">
+    <option value="astar">A* Algorithm</option>
+    <option value="dijkstra">Dijkstra's Algorithm</option>
+  </select>
+  <button id="findPathBtn">Find Path</button>
+  <button id="resetBtn">Reset Points</button>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const csvInput = document.getElementById('csvInput');
+    const findPathBtn = document.getElementById('findPathBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const algorithmSelect = document.getElementById('algorithmSelect');
+
+    let paths = [];
+    let startPoint = null;
+    let endPoint = null;
+    const fixedImage = new Image();
+    fixedImage.src = 'ufmap.png';
+
+    fixedImage.onload = () => {
+      canvas.width = fixedImage.width;
+      canvas.height = fixedImage.height;
+      ctx.drawImage(fixedImage, 0, 0);
+    };
+
+    
+    csvInput.addEventListener('change', loadCSV);
+    canvas.addEventListener('click', handleClick);
+    findPathBtn.addEventListener('click', findPath);
+    resetBtn.addEventListener('click', resetPoints);
+
+    function loadCSV(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const csv = event.target.result;
+        const rows = csv.split('\n');
+        paths = [];
+        rows.slice(1).forEach(row => {
+          const [x, y, path] = row.split(',');
+          paths.push({ x: parseInt(x), y: parseInt(y), path: parseInt(path) });
+          ctx.fillStyle = 'red';
+          ctx.fillRect(parseInt(x), parseInt(y), 1, 1);
+        });
+      };
+      reader.readAsText(file);
+    }
+
+    function handleClick(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor(e.clientX - rect.left);
+      const y = Math.floor(e.clientY - rect.top);
+      if (!startPoint) {
+        startPoint = { x, y };
+        ctx.fillStyle = 'midnightblue';
+        ctx.fillRect(x, y, 5, 5);
+      } else if (!endPoint) {
+        endPoint = { x, y };
+        ctx.fillStyle = 'black';
+        ctx.fillRect(x, y, 5, 5);
+      }
+    }
+
+    async function findPath() {
+      if (!startPoint || !endPoint) {
+        alert('Please select a start point and an end point.');
+        return;
+      }
+
+      const algorithm = algorithmSelect.value;
+
+      const response = await fetch(`/path?startX=${startPoint.x}&startY=${startPoint.y}&endX=${endPoint.x}&endY=${endPoint.y}`);
+      const path = await response.text();
+
+      let pathColor;
+      switch (algorithm) {
+        case 'astar':
+          pathColor = 'lime';
+          break;
+        case 'dijkstra':
+          pathColor = 'blue';
+          break;
+        default:
+          pathColor = 'lime';
+      }
+      // Draw the path on the canvas
+      const coordinates = path.trim().split('\n');
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(coordinates[0].split(',')[0], coordinates[0].split(',')[1]);
+      for (let i = 1; i < coordinates.length; i++) {
+        const [x, y] = coordinates[i].split(',');
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    function resetPoints() {
+      startPoint = null;
+      endPoint = null;
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Redraw the image if it exists
+      ctx.drawImage(fixedImage, 0, 0);
+    }
+  </script>
+</body>
+</html>
