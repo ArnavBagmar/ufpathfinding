@@ -22,16 +22,37 @@ function drawMarker(x, y, color) {
     ctx.arc(x, y, 8, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawMarkerWithOutline(x, y, color) {
+    ctx.save();
+    // Outer circle for outline
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    
+    // Shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    
+    // Inner circle for the marker
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
     
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
-    
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
     
     ctx.restore();
 }
@@ -47,9 +68,6 @@ function getCanvasCoordinates(e) {
 }
 
 function resetCanvas() {
-    startPoint = null;
-    endPoint = null;
-    
     if (baseImage) {
         ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
     } else {
@@ -61,51 +79,53 @@ function resetCanvas() {
         ctx.fillStyle = '#9f7aea';
         ctx.fillRect(path.x, path.y, 2, 2);
     });
+    
+    if (startPoint) drawMarkerWithOutline(startPoint.x, startPoint.y, '#48bb78');
+    if (endPoint) drawMarkerWithOutline(endPoint.x, endPoint.y, '#f56565');
+
+    startPoint = null;
+    endPoint = null;
 }
 
 function drawExploredPath(point, algorithm) {
     ctx.beginPath();
     ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
     ctx.fillStyle = algorithm === 'astar' 
-        ? 'rgba(255, 0, 0, 0.2)' // Lighter purple for A*
-        : 'rgba(59, 130, 246, 0.2)'; // Lighter blue for Dijkstra
+        ? 'rgba(255, 0, 0, 0.2)' // Red for A*
+        : 'rgba(59, 130, 246, 0.2)'; // Light blue for Dijkstra
     ctx.fill();
 }
 
 async function drawFinalPath(path) {
-    // First draw a wider, faded path
-    ctx.beginPath();
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
-    ctx.moveTo(path[0].x, path[0].y);
-    for (const point of path) {
-        ctx.lineTo(point.x, point.y);
+    if (path.length === 0) {
+        console.log('No final path to draw');
+        return;
     }
-    ctx.stroke();
 
-    // Animate the final golden path
+    console.log('Drawing final path with', path.length, 'points');
+
     ctx.beginPath();
+    ctx.moveTo(path[0].x, path[0].y);
     ctx.lineWidth = 4;
-    ctx.strokeStyle = '#FFD700';
+    ctx.strokeStyle = '#FFD700'; // Gold color
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+
+    // Add a glow effect
     ctx.shadowColor = 'rgba(255, 215, 0, 0.5)';
     ctx.shadowBlur = 10;
 
     for (let i = 1; i < path.length; i++) {
-        ctx.beginPath();
-        ctx.moveTo(path[i-1].x, path[i-1].y);
         ctx.lineTo(path[i].x, path[i].y);
         ctx.stroke();
         await new Promise(resolve => setTimeout(resolve, 30));
     }
 
-    // Reset shadow
+    // Reset shadow effect
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
+
+    console.log('Final path drawing completed');
 }
 
 imageInput.addEventListener('change', (e) => {
@@ -154,10 +174,10 @@ canvas.addEventListener('click', (e) => {
     
     if (!startPoint) {
         startPoint = coords;
-        drawMarker(coords.x, coords.y, '#48bb78');
+        drawMarkerWithOutline(coords.x, coords.y, '#48bb78');
     } else if (!endPoint) {
         endPoint = coords;
-        drawMarker(coords.x, coords.y, '#f56565');
+        drawMarkerWithOutline(coords.x, coords.y, '#f56565');
     }
 });
 
@@ -200,61 +220,35 @@ findPathBtn.addEventListener('click', async () => {
                     }
                 }
             } else if (line === 'PATH_START') {
-                console.log('Found PATH_START marker');
+                // Start collecting the final path after encountering PATH_START
                 isCollectingPath = true;
             } else if (isCollectingPath && line.includes(',')) {
                 const [x, y] = line.split(',').map(Number);
                 if (!isNaN(x) && !isNaN(y)) {
                     finalPath.push({x, y});
-                    console.log('Added point to final path:', x, y);
                 }
             }
         }
-        
-        console.log('Parsing complete:');
-        console.log('Visited nodes:', visitedNodes.length);
-        console.log('Final path points:', finalPath.length);
         
         // Show exploration visualization
         for (let i = 0; i < visitedNodes.length; i++) {
             if (i % 3 === 0) {
                 await new Promise(resolve => setTimeout(resolve, 10));
             }
-            const node = visitedNodes[i];
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
-            ctx.fillStyle = algorithm === 'astar' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(59, 130, 246, 0.3)';
-            ctx.fill();
+            drawExploredPath(visitedNodes[i], algorithm);
         }
 
         // After visualization is done, draw the final path
-        if (finalPath.length > 0) {
-            console.log('Drawing final path with', finalPath.length, 'points');
-            console.log('First point:', finalPath[0]);
-            
-            ctx.beginPath();
-            ctx.moveTo(finalPath[0].x, finalPath[0].y);
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#ff0000';  // Bright red for final path
-            
-            for (const point of finalPath) {
-                console.log('Drawing line to:', point);
-                ctx.lineTo(point.x, point.y);
-            }
-            ctx.stroke();
-            console.log('Path drawing completed');
-        } else {
-            console.log('No final path to draw');
-        }
+        await drawFinalPath(finalPath);
 
         // Redraw markers on top
-        drawMarker(startPoint.x, startPoint.y, '#48bb78');
-        drawMarker(endPoint.x, endPoint.y, '#f56565');
+        drawMarkerWithOutline(startPoint.x, startPoint.y, '#48bb78');
+        drawMarkerWithOutline(endPoint.x, endPoint.y, '#f56565');
 
     } catch (error) {
         console.error('Error in pathfinding:', error);
-        if (startPoint) drawMarker(startPoint.x, startPoint.y, '#48bb78');
-        if (endPoint) drawMarker(endPoint.x, endPoint.y, '#f56565');
+        if (startPoint) drawMarkerWithOutline(startPoint.x, startPoint.y, '#48bb78');
+        if (endPoint) drawMarkerWithOutline(endPoint.x, endPoint.y, '#f56565');
     } finally {
         isAnimating = false;
     }
