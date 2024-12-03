@@ -110,15 +110,17 @@ public:
             return {};
         }
 
-        // Priority queue for open set (f_cost, Point)
         auto compare = [](const std::pair<double, Point>& a, const std::pair<double, Point>& b) {
             return a.first > b.first;
         };
         std::priority_queue<std::pair<double, Point>, std::vector<std::pair<double, Point>>, decltype(compare)> open_set(compare);
 
-        // Visited map to track g_cost for each point
         std::unordered_map<std::pair<int, int>, double, PairHash> g_cost;
         std::unordered_map<std::pair<int, int>, Point, PairHash> parent;
+        
+        // Track visited nodes
+        std::vector<Point> visited_nodes;
+        std::vector<Point> final_path;
 
         g_cost[{start.x, start.y}] = 0;
         open_set.push({heuristic(start, end), start});
@@ -127,16 +129,24 @@ public:
             auto [current_f_cost, current] = open_set.top();
             open_set.pop();
 
-            // If the target is reached, reconstruct the path
+            // Output visited node
+            std::cout << "VISITED " << current.x << "," << current.y << std::endl;
+
             if (current == end) {
-                std::vector<Point> path;
-                while (parent.count({current.x, current.y})) {
-                    path.push_back(current);
-                    current = parent[{current.x, current.y}];
+                // Reconstruct and output final path
+                Point curr = current;
+                std::cout << "PATH_START" << std::endl;
+                while (parent.count({curr.x, curr.y})) {
+                    final_path.push_back(curr);
+                    curr = parent[{curr.x, curr.y}];
                 }
-                path.push_back(start);
-                std::reverse(path.begin(), path.end());
-                return path;
+                final_path.push_back(start);
+                std::reverse(final_path.begin(), final_path.end());
+                
+                for (const auto& p : final_path) {
+                    std::cout << p.x << "," << p.y << std::endl;
+                }
+                return final_path;
             }
 
             for (const Point& neighbor : getNeighbors(current)) {
@@ -145,18 +155,17 @@ public:
                 if (!g_cost.count({neighbor.x, neighbor.y}) || tentative_g_cost < g_cost[{neighbor.x, neighbor.y}]) {
                     g_cost[{neighbor.x, neighbor.y}] = tentative_g_cost;
                     parent[{neighbor.x, neighbor.y}] = current;
-
                     double f_cost = tentative_g_cost + heuristic(neighbor, end);
                     open_set.push({f_cost, neighbor});
                 }
             }
         }
 
-        std::cerr << "No path found." << std::endl;
         return {};
     }
 
-std::vector<Point> findPathDijkstra(int start_x, int start_y, int end_x, int end_y) {
+    std::vector<Point> findPathDijkstra(int start_x, int start_y, int end_x, int end_y) {
+        // Similar modification for Dijkstra's algorithm
         Point start = findNearestValidPoint(start_x, start_y);
         Point end = findNearestValidPoint(end_x, end_y);
 
@@ -172,6 +181,7 @@ std::vector<Point> findPathDijkstra(int start_x, int start_y, int end_x, int end
 
         std::unordered_map<std::pair<int, int>, double, PairHash> distance;
         std::unordered_map<std::pair<int, int>, Point, PairHash> parent;
+        std::vector<Point> final_path;
 
         for (const auto& [coord, point] : valid_points) {
             distance[coord] = std::numeric_limits<double>::infinity();
@@ -184,15 +194,24 @@ std::vector<Point> findPathDijkstra(int start_x, int start_y, int end_x, int end
             auto [current_distance, current] = open_set.top();
             open_set.pop();
 
+            // Output visited node
+            std::cout << "VISITED " << current.x << "," << current.y << std::endl;
+
             if (current == end) {
-                std::vector<Point> path;
-                while (parent.count({current.x, current.y})) {
-                    path.push_back(current);
-                    current = parent[{current.x, current.y}];
+                // Reconstruct and output final path
+                Point curr = current;
+                std::cout << "PATH_START" << std::endl;
+                while (parent.count({curr.x, curr.y})) {
+                    final_path.push_back(curr);
+                    curr = parent[{curr.x, curr.y}];
                 }
-                path.push_back(start);
-                std::reverse(path.begin(), path.end());
-                return path;
+                final_path.push_back(start);
+                std::reverse(final_path.begin(), final_path.end());
+                
+                for (const auto& p : final_path) {
+                    std::cout << p.x << "," << p.y << std::endl;
+                }
+                return final_path;
             }
 
             for (const Point& neighbor : getNeighbors(current)) {
@@ -206,7 +225,6 @@ std::vector<Point> findPathDijkstra(int start_x, int start_y, int end_x, int end
             }
         }
 
-        std::cerr << "No path found." << std::endl;
         return {};
     }
 };
