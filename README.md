@@ -33,9 +33,9 @@ The path data CSV should follow this format:
 ```text
 x,y,path_id
 100,200,1
-150,225,1
-200,250,1
-180,275,2
-225,300,2
+150,225,2
+200,250,3
+180,275,4
+225,300,5
 
 
